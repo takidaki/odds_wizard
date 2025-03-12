@@ -136,9 +136,10 @@ leagues_dict = {
 def fetch_table(country, league, table_type="home"):
     url = f"https://www.soccer-rating.com/{country}/{league}/{table_type}/"
     try:
-        response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
+        response = requests.get(url)
+        response.encoding = 'utf-8'
         response.raise_for_status()
-        soup = BeautifulSoup(response.text, "lxml")
+        soup = BeautifulSoup(response.text, 'html.parser')
         html_io = io.StringIO(str(soup))
         tables = pd.read_html(html_io, flavor="lxml")
         
