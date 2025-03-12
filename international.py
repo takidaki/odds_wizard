@@ -166,6 +166,7 @@ def fetch_table(country, league, table_type="home"):
 
 def show():
     """Display the international odds calculator page"""
+    st.set_page_config(page_title="Odds Wizard", page_icon="⚽")  # Set the title and icon
     # Add custom CSS with Montserrat font
     st.markdown("""
     <style>
