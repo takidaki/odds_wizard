@@ -133,19 +133,24 @@ leagues_dict = {
 }
 
 # Function to fetch team rating table
+# Function to fetch team rating table with proper encoding
 def fetch_table(country, league, table_type="home"):
     url = f"https://www.soccer-rating.com/{country}/{league}/{table_type}/"
     try:
         response = requests.get(url)
-        response.encoding = 'utf-8'
-        response.raise_for_status()
+        response.encoding = response.apparent_encoding  # Detect encoding
         soup = BeautifulSoup(response.text, 'html.parser')
-        html_io = io.StringIO(str(soup))
+        
+        # Decode content properly
+        decoded_html = response.content.decode(response.apparent_encoding, errors='ignore')
+        
+        # Read tables
+        html_io = io.StringIO(decoded_html)
         tables = pd.read_html(html_io, flavor="lxml")
         
-        # Extracting the correct table
         if tables and len(tables) > 14:
             rating_table = tables[14]
+            rating_table.iloc[:, 1] = rating_table.iloc[:, 1].apply(lambda x: x.encode('latin1').decode('utf-8') if isinstance(x, str) else x)
         else:
             return None
         
@@ -157,6 +162,7 @@ def fetch_table(country, league, table_type="home"):
     except ValueError as e:
         st.error(f"Error parsing tables: {e}")
         return None
+
 
 def show():
     """Display the international odds calculator page"""
@@ -282,7 +288,7 @@ def show():
             with prob_col1:
                 st.markdown(f"""
                 <div style='text-align: center;'>
-                    <span style='font-size: 14px; color: #1f77b4;'>{team1}</span><br>
+                    <span style='font-size: 14px; color: #1f77b4;'>{team1.encode('utf-8').decode('utf-8')}</span><br>
                     <span style='font-size: 16px; color: #1f77b4; font-weight: bold;'>Win: {home_win:.1%}</span><br>
                     <span style='font-size: 14px; color: #666;'>Odds: {home_odds:.2f}</span>
                 </div>
@@ -300,7 +306,7 @@ def show():
             with prob_col2:
                 st.markdown(f"""
                 <div style='text-align: center;'>
-                    <span style='font-size: 14px; color: #ff7f0e;'>{team2}</span><br>
+                    <span style='font-size: 14px; color: #ff7f0e;'>{team2.encode('utf-8').decode('utf-8')}</span><br>
                     <span style='font-size: 16px; color: #ff7f0e; font-weight: bold;'>Win: {away_win:.1%}</span><br>
                     <span style='font-size: 14px; color: #666;'>Odds: {away_odds:.2f}</span>
                 </div>
