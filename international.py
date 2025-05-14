@@ -136,35 +136,49 @@ leagues_dict = {
 def fetch_table(country, league, table_type="home"):
     url = f"https://www.soccer-rating.com/{country}/{league}/{table_type}/"
     try:
+        # Get the raw content as bytes
         response = requests.get(url)
-        response.encoding = 'latin1'  # Force latin1 encoding
         
-        # Parse with BeautifulSoup first
-        soup = BeautifulSoup(response.text, 'lxml')
+        # Try to decode with different encodings
+        try:
+            # Try latin1 (ISO-8859-1) first
+            html_content = response.content.decode('latin1')
+        except UnicodeDecodeError:
+            try:
+                # Try windows-1252 as fallback
+                html_content = response.content.decode('windows-1252')
+            except UnicodeDecodeError:
+                # Last resort: ignore problematic characters
+                html_content = response.content.decode('utf-8', errors='ignore')
         
-        # Try to find the table using BeautifulSoup
-        tables_html = soup.find_all('table')
+        # Parse with BeautifulSoup
+        soup = BeautifulSoup(html_content, 'lxml')
         
-        if len(tables_html) > 14:
-            # Convert the specific table to string and then use pandas
-            table_html = str(tables_html[14])
-            # Use pandas with explicit encoding
-            rating_table = pd.read_html(table_html, encoding='latin1', flavor='lxml')[0]
+        # Find all tables
+        tables = soup.find_all('table')
+        
+        if len(tables) > 14:
+            # Get the 15th table (index 14)
+            target_table = tables[14]
+            
+            # Convert to string and read with pandas
+            table_str = str(target_table)
+            
+            # Use StringIO to avoid writing to disk
+            from io import StringIO
+            rating_table = pd.read_html(StringIO(table_str), flavor='lxml')[0]
+            
             return rating_table
         else:
-            st.warning(f"Could not find enough tables on the page. Found {len(tables_html)} tables.")
+            st.warning(f"Could not find enough tables on the page. Found {len(tables)} tables.")
             return None
-        
+            
     except requests.RequestException as e:
         st.error(f"Error fetching data: {e}")
         return None
-    except ValueError as e:
-        st.error(f"Error parsing tables: {e}")
-        # Add more detailed error information
-        st.error(f"URL attempted: {url}")
-        return None
     except Exception as e:
         st.error(f"Unexpected error: {str(e)}")
+        st.error(f"URL attempted: {url}")
         return None
 
 
@@ -397,5 +411,6 @@ def show():
 
 if __name__ == "__main__":
     show()
+
 
 
