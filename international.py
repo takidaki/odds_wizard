@@ -19,7 +19,7 @@ leagues_dict = {
     "Denmark": ["DK1", "DK2", "DK3G1", "DK3G2"],
     "Greece": ["GR1", "GR2"],
     "Norway": ["NO1", "NO2", "NO3G1", "NO3G2"],
-    "Czech Republic": ["CZ1", "CZ2"],
+    "Czech-Republic": ["CZ1", "CZ2"],
     "Turkey": ["TU1", "TU2", "TU3B", "TU3K"],
     "Belgium": ["BE1", "BE2"],
     "Scotland": ["SC1", "SC2", "SC3", "SC4"],
@@ -47,7 +47,7 @@ leagues_dict = {
     "Kosovo": ["XK1"],
     "Albania": ["AL1"],
     "Lithuania": ["LT1", "LT2"],
-    "North Macedonia": ["MK1"],
+    "North-Macedonia": ["MK1"],
     "Armenia": ["AM1"],
     "Estonia": ["EE1", "EE2"],
     "Northern Ireland": ["NI1", "NI2"],
@@ -72,7 +72,7 @@ leagues_dict = {
     "Costa-Rica": ["CR1", "CR2"],
     "Bolivia": ["BO1"],
     "Guatemala": ["GT1", "GT2"],
-    "Dominican Rep.": ["DO1"],
+    "Dominican-Rep.": ["DO1"],
     "Honduras": ["HN1"],
     "Venezuela": ["VE1"],
     "Peru": ["PE1", "PE2"],
@@ -103,8 +103,8 @@ leagues_dict = {
     "Myanmar": ["MM1"],
     "Palestine": ["PS1"],
     "India": ["IN1", "IN2"],
-    "New Zealand": ["NZ1"],
-    "Hong Kong": ["HK1", "HK2"],
+    "New-Zealand": ["NZ1"],
+    "Hong-Kong": ["HK1", "HK2"],
     "Oman": ["OM1"],
     "Taiwan": ["TW1"],
     "Tajikistan": ["TJ1"],
@@ -133,34 +133,38 @@ leagues_dict = {
 }
 
 # Function to fetch team rating table
-# Function to fetch team rating table with proper encoding
 def fetch_table(country, league, table_type="home"):
     url = f"https://www.soccer-rating.com/{country}/{league}/{table_type}/"
     try:
         response = requests.get(url)
-        response.encoding = response.apparent_encoding  # Detect encoding
-        soup = BeautifulSoup(response.text, 'html.parser')
+        response.encoding = 'latin1'  # Force latin1 encoding
         
-        # Decode content properly
-        decoded_html = response.content.decode(response.apparent_encoding, errors='ignore')
+        # Parse with BeautifulSoup first
+        soup = BeautifulSoup(response.text, 'lxml')
         
-        # Read tables
-        html_io = io.StringIO(decoded_html)
-        tables = pd.read_html(html_io, flavor="lxml")
+        # Try to find the table using BeautifulSoup
+        tables_html = soup.find_all('table')
         
-        if tables and len(tables) > 14:
-            rating_table = tables[14]
-            rating_table.iloc[:, 1] = rating_table.iloc[:, 1].apply(lambda x: x.encode('latin1').decode('utf-8') if isinstance(x, str) else x)
+        if len(tables_html) > 14:
+            # Convert the specific table to string and then use pandas
+            table_html = str(tables_html[14])
+            # Use pandas with explicit encoding
+            rating_table = pd.read_html(table_html, encoding='latin1', flavor='lxml')[0]
+            return rating_table
         else:
+            st.warning(f"Could not find enough tables on the page. Found {len(tables_html)} tables.")
             return None
         
-        return rating_table
-
     except requests.RequestException as e:
         st.error(f"Error fetching data: {e}")
         return None
     except ValueError as e:
         st.error(f"Error parsing tables: {e}")
+        # Add more detailed error information
+        st.error(f"URL attempted: {url}")
+        return None
+    except Exception as e:
+        st.error(f"Unexpected error: {str(e)}")
         return None
 
 
@@ -393,3 +397,5 @@ def show():
 
 if __name__ == "__main__":
     show()
+
+
